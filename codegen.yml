@@ -1,0 +1,17 @@
+overwrite: true
+schema:
+- "scalar AWSDateTime"
+- "scalar AWSDate"
+- "scalar AWSTime"
+- "../appsync/schema.graphql"
+documents: "../appsync/queries/*.graphql"
+generates:
+  ../../AppSync/AppSync.Operations.cs:
+    plugins:
+      - plugin.js
+    config:
+      scalars:
+        AWSDateTime: Date
+        AWSDate: string
+        AWSTime: string
+      skipTypename: true
