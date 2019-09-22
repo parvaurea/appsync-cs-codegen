@@ -3,10 +3,10 @@ schema:
 - "scalar AWSDateTime"
 - "scalar AWSDate"
 - "scalar AWSTime"
-- "../appsync/schema.graphql"
-documents: "../appsync/queries/*.graphql"
+- "../fogbugz-aws-rebuild/aws/appsync/schema.graphql"
+documents: "../fogbugz-aws-rebuild/aws/appsync/queries/*.graphql"
 generates:
-  ../../AppSync/AppSync.Operations.cs:
+  ../fogbugz-aws-rebuild/AppSync/AppSync.Operations.cs:
     plugins:
       - plugin.js
     config:

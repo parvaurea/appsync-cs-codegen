@@ -1,6 +1,6 @@
 import {
   ASTKindToNode, ASTNode, DocumentNode, FieldDefinitionNode, FieldNode, GraphQLSchema, InputObjectTypeDefinitionNode,
-  ObjectTypeDefinitionNode, OperationDefinitionNode, parse, printSchema, TypeNode, Visitor
+  ObjectTypeDefinitionNode, OperationDefinitionNode, parse, printSchema, TypeNode, Visitor, DefinitionNode
 } from 'graphql';
 export class OperationTypesVisitorFactory {
   public astNode: DocumentNode;
@@ -23,10 +23,11 @@ export class OperationTypesVisitorFactory {
         Field: (node) => {
           const fields: { [key: string]: FieldDefinitionNode } = {};
           const type = (node as any).schemaType as TypeNode;
-          const typeName = this.getTypeName(type);
-          const schemaTypes = this.astNode
+          const typeName = this.getGqlTypeName(type);
+          let schemaTypes: DefinitionNode[] = [];
+          schemaTypes = this.astNode
             .definitions
-            .filter((d) => d.kind === 'ObjectTypeDefinition' && d.name.value === typeName);
+            .filter((d) => d.kind === 'ObjectTypeDefinition' && d.name.value === typeName)
           if (schemaTypes.length) {
             const schemaType = schemaTypes[0] as ObjectTypeDefinitionNode;
             if (schemaType.fields) {
@@ -34,11 +35,17 @@ export class OperationTypesVisitorFactory {
                 fields[f.name.value] = f;
               });
             }
+          } else {
+            fields.SOMETHING = JSON.stringify(type) as any as FieldDefinitionNode;
           }
           if (node.selectionSet) {
             for (const selection of node.selectionSet.selections) {
               if (selection.kind === 'Field') {
-                (selection as any).schemaType = fields[selection.name.value] && fields[selection.name.value].type;
+                if (fields[selection.name.value]) {
+                  (selection as any).schemaType = fields[selection.name.value].type;
+                } else {
+                  (selection as any).schemaType = JSON.stringify(fields);
+                }
               }
             }
           }
@@ -108,9 +115,10 @@ export class OperationTypesVisitorFactory {
                   r += selection.selectionSet;
                   r += `  public ${csType} ${selection.name.value} { get; set; }\n`;
                 } else {
-                  if (csType) {
+                  if (csType && !csType.includes('unknown')) {
                     r += `  public ${csType} ${selection.name.value} { get; set; }\n`;
                   } else {
+                    r += `// ${JSON.stringify(graphQLType)}\n`;
                     r += `  public object ${selection.name.value} { get; set; }\n`;
                   }
                 }
@@ -126,7 +134,7 @@ export class OperationTypesVisitorFactory {
           let r = '';
           if (node.name) {
             const operationClassName = `${node.operation}${node.name.value}`;
-            
+
             r += `public class ${operationClassName}`;
             r += '\n{\n';
             r += 'public IAppSyncClient AppSyncClient { get; }';
@@ -180,6 +188,19 @@ export class OperationTypesVisitorFactory {
     };
 
     return operationTypesVisitor;
+  }
+  
+  public getGqlTypeName(type: TypeNode): string {
+    switch (type.kind) {
+      case 'ListType':
+        return this.getGqlTypeName(type.type);
+      case 'NamedType':
+        return type.name.value;
+      case 'NonNullType':
+        return this.getGqlTypeName(type.type);
+      default:
+        return 'unknown5';
+    }
   }
 
   public getInputTypeObjectDefinition(typeName: string) {
