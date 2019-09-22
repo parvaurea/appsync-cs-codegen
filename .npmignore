@@ -1,0 +1,6 @@
+*.ts
+codegen.yml
+codealike.json
+.gitignore
+node_modules
+tsconfig.json
